@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cart Example</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-4">
+<div class="container">
+    <h2 class="mb-4">cart</h2>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="orditem_data mb-3 p-3 border"data-id-product="101" data-id-variant="1" data-min-qty="1" data-max-qty="5">
+                <img src="cart.jpg" width="80" class="product-img mb-2">
+                <label>amount product:</label>
+                <input type="number" class="product_qty_input form-control mb-2" value="1" min="1" max="5">
+                <button class="ajax_add_to_cart_button btn btn-primary">add to cart</button>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="orditem_data mb-3 p-3 border"data-id-product="102" data-id-variant="2" data-min-qty="1" data-max-qty="5">
+                <img src="cart2.jpg" width="50" class="product-img mb-2">
+                <label>amount product:</label>
+                <input type="number" class="product_qty_input form-control mb-2" value="1" min="1" max="5">
+                <button class="ajax_add_to_cart_button btn btn-primary">add to cart</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- العربة -->
+    <div class="cart-summary mt-4">
+        <h5 id="cart-icon">🛒 cart:</h5>
+        <ul id="cart-items" class="list-group"></ul>
+    </div>
+</div>
+
+<!-- Modal for Errors -->
+<div class="modal fade" id="alertError" tabindex="-1" aria-labelledby="alertErrorLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="alertErrorLabel">Error</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="list-unstyled"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+	$(document).ready(function() {
+		ajaxCart.overrideButtonsInThePage();
+		//ajaxCart.refresh();
+	});
+// Delegated event للزرار Remove
+$(document).on('click', '.ajax_cart_block_remove_link', function(e){
+    e.preventDefault();
+    $(this).closest('.orditem_data').remove();
+    cartCount--; 
+});
+// زيادة الكمية
+$(document).on('click', '.btn-increase', function() {
+  var li = $(this).closest('li'); // أخد العنصر الأب <li>
+  var qtySpan = li.find('.qty');  // أخد المكان اللي فيه الكمية
+  var qty = parseInt(qtySpan.text()); // حول النص لرقم
+  if(qty < 5) {
+  qty++; // زود الكمية
+  qtySpan.text(qty); // حط الكمية الجديدة في الصفحة
+  }
+});
+
+// نقصان الكمية
+$(document).on('click', '.btn-decrease', function() {
+  var li = $(this).closest('li');
+  var qtySpan = li.find('.qty');
+  var qty = parseInt(qtySpan.text());
+  if(qty > 1) { // منع النزول تحت 1
+    qty--;
+    qtySpan.text(qty);
+  }
+});
+
+	var cartCount = 0;  
+	var cartLimit = 5;  
+
+		/*add: function(idProduct, idVariant, qty, qtyMax, button) {
+			var data_el = button.closest('.orditem_data');
+			var productImg = data_el.find('.product-img');
+				$('#cart-items').append('<li class="orditem_data d-flex align-items-center justify-content-between mb-2" data-id-product="' + idProduct + '">' + '<img src="' + productImg .attr('src')+ '" width="40" class="rounded me-2">' + 'Product ' + idProduct + ' × <span class="qty">' + qty + '</span>' +'<div class="btn-group btn-group-sm ms-2">' +'<button class="btn btn-success btn-increase">+</button>' +'<button class="btn btn-warning btn-decrease">−</button>' + '<button class="ajax_cart_block_remove_link btn btn-danger">Remove</button>' +'</div>' +'</li>' );
+					cartCount++;
+					 flyToElement(productImg, $('#cart-icon'));*/
+var ajaxCart = {
+
+    add: function(idProduct, idVariant, qty, qtyMax, button) {
+
+        var data_el = button.closest('.orditem_data');
+        var productImg = data_el.find('.product-img');
+		
+		 if(cartCount + qty > cartLimit) {
+        show_alerts_modal(['وصلت لأقصى كمية مسموحة في السلة']);
+        return; // منع الإضافة
+    }
+
+        // دور على المنتج في السلة
+        var productItem = $('#cart-items').find('li[data-id-product="' + idProduct + '"]' );
+
+        if (productItem.length) {
+            // المنتج موجود → زود الكمية
+            var qtySpan = productItem.find('.qty');
+            var currentQty = parseInt(qtySpan.text());
+            var newQty = currentQty + qty;
+
+            if (newQty > qtyMax) {
+                newQty = qtyMax;
+                show_alerts_modal(['وصلت لأقصى كمية مسموحة']);
+            }
+
+            qtySpan.text(newQty);
+
+        } else {
+            // المنتج مش موجود → أضفه جديد
+           $('#cart-items').append('<li class="orditem_data d-flex align-items-center justify-content-between mb-2" data-id-product="' + idProduct + '">' + '<img src="' + productImg .attr('src')+ '" width="40" class="rounded me-2">' + 'Product ' + idProduct + ' × <span class="qty">' + qty + '</span>' +'<div class="btn-group btn-group-sm ms-2">' +'<button class="btn btn-success btn-increase">+</button>' +'<button class="btn btn-warning btn-decrease">−</button>' + '<button class="ajax_cart_block_remove_link btn btn-danger">Remove</button>' +'</div>' +'</li>' );
+            
+        }
+			cartCount += qty;
+        flyToElement(productImg, $('#cart-icon'));
+    }, 
+
+		remove: function(idProduct, idVariant, button) {
+			button.closest('.orditem_data').remove();
+		},
+		
+		overrideButtonsInThePage: function() {
+			$(document).off('click', '.ajax_add_to_cart_button').on('click', '.ajax_add_to_cart_button', function(e) {
+				e.preventDefault();// هنمنع اي تحميل يزميلي 
+				var errors = [];
+				var data_el = $(this).closest('.orditem_data');//اطلع فوق اجيب العنصر الاساسي 
+				var qty_input = data_el.find('.product_qty_input');
+				var orditem_qty = (qty_input.length) ? parseInt(qty_input.val()) : 1;
+				var idProduct = parseInt(data_el.data('id-product'));// حولهم ل ارقام كلهم 
+				var idVariant = parseInt(data_el.data('id-variant'));
+				var qtyMin = parseInt(data_el.data('min-qty'));
+				var qtyMax = parseInt(data_el.data('max-qty'));
+				 if(cartCount >= cartLimit)
+						{
+							show_alerts_modal(['السلة اتملت، الحد الأقصى 5 منتجات']);
+							return;
+						}
+				if (!qtyMin) {
+				qtyMin = 0;
+				}
+				if(orditem_qty < qtyMin) {
+					errors.push('Error: Minimum Quantity to buy this product is:'+qtyMin);
+					qty_input.val(qtyMin);
+				} else if(orditem_qty > qtyMax) {
+					errors.push('Error: Maximum Quantity to buy this product is:'+qtyMax);
+					qty_input.val(qtyMax);
+				} else {
+					ajaxCart.add(idProduct, idVariant, orditem_qty, qtyMax, $(this));
+				}
+
+				if(errors.length) {
+					show_alerts_modal(errors);
+				}
+			});
+			
+		},
+		refreshProductQtyInput: function (data_el, changeType, changeValue, from_cart) {
+			var errors = [];
+			var hasError = false;//اول حاجه مفيش غلط عندنا 
+			var idProduct = parseInt(data_el.data('id-product'));
+			var idVariant = parseInt(data_el.data('id-variant'));
+			var qtyMax = parseInt(data_el.data('max-qty'));
+			var qtyMin = parseInt(data_el.data('min-qty'));
+			var qtyInput = data_el.find('.product_qty_input');
+			var currentValue = parseInt(qtyInput.val());//القيمه الحاليه 
+			if(changeType == "up") {
+				var newValue = currentValue + changeValue;
+				if (!isNaN(newValue) && newValue <= qtyMax) {
+					$('.layer_cart_qty_'+idProduct).each(function (){
+						$(this).val(newValue);
+						$(this).data('old-value', newValue);
+					});
+				} else {
+					qtyInput.val(qtyMax);
+					qtyInput.data('old-value', qtyMax);
+					hasError = true;
+					errors.push('Error: Maximum Quantity to buy this product is:'+qtyMax);
+				}
+			} else if(changeType == "down") {
+				var newValue = currentValue - changeValue;
+				if (!isNaN(newValue) && newValue >= qtyMin) 
+				{
+					$('.layer_cart_qty_'+idProduct).each(function (){
+						$(this).val(newValue);
+						$(this).data('old-value', newValue);
+					});
+				} else{
+					qtyInput.val(qtyMin);
+					qtyInput.data('old-value', qtyMin);
+					hasError = true;
+					errors.push('Error: Minimum Quantity to buy this product is:'+qtyMin);
+				}
+			}
+			if(errors.length) {
+				show_alerts_modal(errors);
+			} else {
+				if (from_cart) {
+					ajaxCart.update(data_el, newValue, qtyInput, changeType);
+				}
+			}
+		}
+	};
+
+	// Show Errors in Modal
+	function show_alerts_modal(errors, title = "Something is wrong") {
+		errors_len = errors.length;
+		errors_html = '';
+		if(errors_len != 0) {
+			for (var i = 0; i < errors_len; i++) {
+			  errors_html = errors_html + '<li>' + errors[i] + '</li>';
+			}
+			$('#alertError .modal-title').html(title);
+			$('#alertError .modal-body .list-unstyled').html(errors_html);
+			$('#alertError').modal('show');
+		}
+	}
+
+	$(document).on('hidden.bs.modal', function (event) {
+		if ($('.modal:visible').length) {
+			$('body').addClass('modal-open');
+		}
+	});
+	function flyToElement(flyer, flyingTo) {
+	var $func = $(this);
+	var divider = 3;//لتصغير حجم الصوره
+	var flyerClone = $(flyer).clone();
+	$(flyerClone).css({'max-width': $(flyer).width(), 'overflow': 'hidden', 'position': 'absolute', 'top': $(flyer).offset().top + "px", 'left': $(flyer).offset().left + "px", 'opacity': 1, 'z-index': 1000});
+	$('body').append($(flyerClone));
+	var gotoY = $(flyingTo).offset().top + ($(flyingTo).height() / 2) - ($(flyer).height()/divider)/2;
+	var gotoX = $(flyingTo).offset().left + ($(flyingTo).width() / 2) - ($(flyer).width()/divider)/2;
+	if(gotoX < 0) {
+		gotoX = 0;
+	}
+	if(gotoY < 0) {
+		gotoY = 0;
+	}
+	
+	var animateTo = ($(flyingTo).offset().left > $(flyingTo).offset().right) ? 'right' : 'left';
+	animateTo = 'left';
+	$(flyerClone).animate({
+		opacity: 0.4,
+		left: gotoX,
+		top: gotoY,
+		width: $(flyer).width()/divider,
+		height: $(flyer).height()/divider
+	}, 700,
+	function () {
+		$(flyingTo).fadeOut('fast', function () {
+			$(flyingTo).fadeIn('fast', function () {
+				$(flyerClone).fadeOut('fast', function () {
+					$(flyerClone).remove();
+				});
+			});
+		});
+	});
+}
+</script>
+
+</body>
+</html>
